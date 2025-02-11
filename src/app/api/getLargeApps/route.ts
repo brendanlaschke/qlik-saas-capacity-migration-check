@@ -1,6 +1,7 @@
 import { Connection } from '../getTenantSpaceSize/route';
 
 export type AppInfo = {
+    id: string;
     name: string;
     memorySize: number;
 };
@@ -17,7 +18,8 @@ export async function POST(request: Request) {
 
         let next =
             con.next ??
-            con.tenantUrl + '/api/v1/items?resourceType=app&limit=100';
+            (con.tenantUrl + '/api/v1/items?resourceType=app&limit=100');
+
         const res = await fetch(next, {
             headers: {
                 Authorization: `Bearer ${con.apiKey}`,
@@ -27,12 +29,13 @@ export async function POST(request: Request) {
         next = json.links?.next?.href;
 
         const newapps = json.data.filter(
-            (app) => app.size > showAppsBiggerThan
+            (app) => app.resourceSize.appMemory > showAppsBiggerThan
         );
 
         return Response.json({
             data: newapps.map((app) => ({
                 name: app.name,
+                id: app.id,
                 memorySize: app.resourceSize.appMemory,
             })) as AppInfo[],
             next,

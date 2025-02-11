@@ -25,46 +25,65 @@ export const Home = () => {
 
     const [spaceData, setSpaceData] = useState<SpaceWithSize[]>([]);
     const [appData, setAppData] = useState<AppInfo[]>([]);
+
     const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string>();
 
     async function sendRequest(next?: string) {
-        const res = await fetch('/api/getTenantSpaceSize', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ tenantUrl, apiKey, next }),
-        });
-        const json = await res.json();
-
-        setSpaceData((old) => [...old, ...json.data.filter((x) => x.size > 0)]);
-        setTimeout(() => {
-            if (json.next) {
-                sendRequest(json.next);
-            } else {
-                sendAppRequest();
+        try {
+            const res = await fetch('/api/getTenantSpaceSize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ tenantUrl, apiKey, next }),
+            });
+            if (!res.ok) {
+                throw res.text();
             }
-        }, 100);
+            const json = await res.json();
+
+            setSpaceData((old) => [
+                ...old,
+                ...json.data.filter((x) => x.size > 0),
+            ]);
+            setTimeout(() => {
+                if (json.next) {
+                    sendRequest(json.next);
+                } else {
+                    sendAppRequest();
+                }
+            }, 100);
+        } catch (error) {
+            setError(error);
+        }
     }
 
     async function sendAppRequest(next?: string) {
-        const res = await fetch('/api/getLargeApps', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ tenantUrl, apiKey, next }),
-        });
-        const json = await res.json();
-
-        setAppData((old) => [...old, ...json.data]);
-        setTimeout(() => {
-            if (json.next) {
-                sendAppRequest(json.next);
-            } else {
-                setLoading(false);
+        try {
+            const res = await fetch('/api/getLargeApps', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ tenantUrl, apiKey, next }),
+            });
+            if (!res.ok) {
+                throw res.text();
             }
-        }, 100);
+            const json = await res.json();
+
+            setAppData((old) => [...old, ...json.data]);
+            setTimeout(() => {
+                if (json.next) {
+                    sendAppRequest(json.next);
+                } else {
+                    setLoading(false);
+                }
+            }, 100);
+        } catch (error) {
+            setError(error);
+        }
     }
 
     function formatBytes(bytes, decimals = 2) {
@@ -90,9 +109,18 @@ export const Home = () => {
             h="full"
             position="relative"
         >
-          {loading &&<div style={{position: 'absolute', left: 0, top: '-38px', transform: 'translate(50%, -50%)'}}>
-            <Spinner></Spinner>
-          </div>}
+            {loading && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: '-38px',
+                        transform: 'translate(50%, -50%)',
+                    }}
+                >
+                    <Spinner></Spinner>
+                </div>
+            )}
             <Grid textAlign="center">
                 <Heading as="h1" size="2xl" fontWeight="bold">
                     Qlik Migration Check
@@ -124,8 +152,10 @@ export const Home = () => {
                         ></Input>
                     </Field.Root>
                     <Button
+                        loading={!!loading}
                         size="sm"
                         onClick={() => {
+                            setError(undefined);
                             setLoading(true);
                             sendRequest();
                         }}
@@ -133,6 +163,13 @@ export const Home = () => {
                         Get Info
                     </Button>
                 </>
+            )}
+            {error && (
+                <Box p={4}>
+                    <Text fontSize="xs" color="fg.warning">
+                        {error}
+                    </Text>
+                </Box>
             )}
             {spaceData.length > 0 && (
                 <>
@@ -190,7 +227,7 @@ export const Home = () => {
                                 })
                                 .map((item) => (
                                     <Table.Row
-                                        key={item.name}
+                                        key={item.id}
                                         backgroundColor={
                                             item.memorySize > showAppsBiggerThan
                                                 ? '#FF806677'
@@ -209,7 +246,7 @@ export const Home = () => {
                     <Box p={4}>
                         <Text fontSize="xs">
                             {appData.length
-                                ? 'Count: ' + appData.length
+                                ? 'Large Apps: ' + appData.length
                                 : 'No large Apps!'}
                         </Text>
                     </Box>
