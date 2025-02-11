@@ -44,7 +44,7 @@ export const Home = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ tenantUrl, apiKey, next }),
+                body: JSON.stringify({ tenantUr: url, apiKey, next }),
             });
             if (!res.ok) {
                 throw res.text();
