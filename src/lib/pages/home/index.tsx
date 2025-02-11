@@ -31,6 +31,14 @@ export const Home = () => {
 
     async function sendRequest(next?: string) {
         try {
+            let url = tenantUrl;
+            if (!url.startsWith('https://')) {
+                url = 'https://' + url;
+            }
+            if (!url.endsWith('/')){
+                url = url.slice(0, -1);
+            }
+
             const res = await fetch('/api/getTenantSpaceSize', {
                 method: 'POST',
                 headers: {
